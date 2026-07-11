@@ -15,7 +15,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tally — monthly budget",
+  title: "INAB — monthly budget",
   description: "Track the month across needs, fun, and short-term savings.",
 };
 

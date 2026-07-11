@@ -10,7 +10,7 @@ export async function TopNav() {
       <div className="mx-auto flex max-w-5xl items-stretch justify-between px-4">
         <div className="flex items-stretch gap-8">
           <div className="flex items-center py-3 font-mono text-sm font-semibold tracking-[0.2em] text-phosphor">
-            TALLY<span aria-hidden className="ml-px inline-block h-4 w-2 bg-phosphor" />
+            INAB<span aria-hidden className="ml-px inline-block h-4 w-2 bg-phosphor" />
           </div>
           <Tabs />
         </div>

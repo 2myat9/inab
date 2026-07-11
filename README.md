@@ -1,4 +1,4 @@
-# Tally
+# INAB
 
 A single-user personal finance tracker. One monthly budget, three pillars —
 **Needs**, **Fun**, and **Short-term Savings** — and a stats tab covering the

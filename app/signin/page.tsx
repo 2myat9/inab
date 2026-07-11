@@ -9,7 +9,7 @@ export default async function SignInPage() {
     <main className="flex flex-1 items-center justify-center px-4">
       <div className="w-full max-w-sm border border-line p-8">
         <p className="font-mono text-sm font-semibold tracking-[0.2em] text-phosphor">
-          TALLY<span aria-hidden className="ml-px inline-block h-4 w-2 bg-phosphor" />
+          INAB<span aria-hidden className="ml-px inline-block h-4 w-2 bg-phosphor" />
         </p>
         <p className="mt-3 text-sm text-fog">
           One monthly budget. Three pillars: needs, fun, short-term savings.
