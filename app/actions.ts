@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { db } from "@/db";
+import { getDb } from "@/db";
 import { budgets, entries } from "@/db/schema";
 import { parseMoney } from "@/lib/money";
 import { monthKey } from "@/lib/months";
@@ -38,7 +38,7 @@ export async function setBudget(
   }
 
   try {
-    await db
+    await getDb()
       .insert(budgets)
       .values({ userId, month: monthKey(new Date()), amountCents })
       .onConflictDoUpdate({
@@ -75,7 +75,7 @@ export async function addEntry(
   }
 
   try {
-    await db.insert(entries).values({
+    await getDb().insert(entries).values({
       userId,
       month: monthKey(new Date()),
       category: category.data,
@@ -96,7 +96,9 @@ export async function deleteEntry(formData: FormData): Promise<void> {
   const id = z.coerce.number().int().safeParse(formData.get("id"));
   if (!id.success) return;
 
-  await db.delete(entries).where(and(eq(entries.id, id.data), eq(entries.userId, userId)));
+  await getDb()
+    .delete(entries)
+    .where(and(eq(entries.id, id.data), eq(entries.userId, userId)));
 
   revalidateTabs();
 }

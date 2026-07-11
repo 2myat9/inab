@@ -1,7 +1,13 @@
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-const sql = neon(process.env.DATABASE_URL!);
+let db: NeonHttpDatabase<typeof schema> | null = null;
 
-export const db = drizzle(sql, { schema });
+// Lazy so the module can be imported (e.g. at build time) without DATABASE_URL.
+export function getDb() {
+  if (!db) {
+    db = drizzle(neon(process.env.DATABASE_URL!), { schema });
+  }
+  return db;
+}
