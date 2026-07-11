@@ -11,7 +11,7 @@ type Props = {
 
 const SEGMENT_COLORS: Record<Category, string> = {
   needs: "bg-pine",
-  fun: "bg-moss",
+  wants: "bg-moss",
   savings: "bg-phosphor",
 };
 

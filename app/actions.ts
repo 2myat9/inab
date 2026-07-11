@@ -11,7 +11,7 @@ import { monthKey } from "@/lib/months";
 
 export type ActionResult = { ok: boolean; error?: string };
 
-const categorySchema = z.enum(["needs", "fun", "savings"]);
+const categorySchema = z.enum(["needs", "wants", "savings"]);
 const noteSchema = z.string().trim().max(200);
 
 async function requireUserId(): Promise<string> {

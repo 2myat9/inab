@@ -8,12 +8,12 @@ const budgets: BudgetRow[] = [{ month: "2026-01", amountCents: 200000 }];
 
 const entries: EntryRow[] = [
   { month: "2026-03", category: "needs", amountCents: 80000 },
-  { month: "2026-03", category: "fun", amountCents: 20000 },
+  { month: "2026-03", category: "wants", amountCents: 20000 },
   { month: "2026-03", category: "savings", amountCents: 50000 },
   { month: "2026-05", category: "needs", amountCents: 100000 },
   { month: "2026-05", category: "savings", amountCents: 150000 },
   // outside the window — must be ignored
-  { month: "2026-01", category: "fun", amountCents: 999999 },
+  { month: "2026-01", category: "wants", amountCents: 999999 },
 ];
 
 describe("computeStats", () => {
@@ -22,13 +22,13 @@ describe("computeStats", () => {
   test("returns one row per window month, ascending, zeroed when empty", () => {
     expect(stats.months.map((m) => m.month)).toEqual(WINDOW);
     expect(stats.months[0].totalCents).toBe(0);
-    expect(stats.months[0].byCategory).toEqual({ needs: 0, fun: 0, savings: 0 });
+    expect(stats.months[0].byCategory).toEqual({ needs: 0, wants: 0, savings: 0 });
   });
 
   test("totals entries per month and per category", () => {
     const march = stats.months[1];
     expect(march.totalCents).toBe(150000);
-    expect(march.byCategory).toEqual({ needs: 80000, fun: 20000, savings: 50000 });
+    expect(march.byCategory).toEqual({ needs: 80000, wants: 20000, savings: 50000 });
   });
 
   test("resolves each month's budget with fallback to earlier months", () => {
@@ -54,8 +54,8 @@ describe("computeStats", () => {
   });
 
   test("computes the average category split as fractions of total spend", () => {
-    // needs 180000, fun 20000, savings 200000 of 400000
-    expect(stats.avgSplit).toEqual({ needs: 0.45, fun: 0.05, savings: 0.5 });
+    // needs 180000, wants 20000, savings 200000 of 400000
+    expect(stats.avgSplit).toEqual({ needs: 0.45, wants: 0.05, savings: 0.5 });
   });
 
   test("returns nulls and zeros when the window has no entries", () => {

@@ -1,7 +1,7 @@
 # INAB
 
 A single-user personal finance tracker. One monthly budget, three pillars —
-**Needs**, **Fun**, and **Short-term Savings** — and a stats tab covering the
+**Needs**, **Wants**, and **Savings** — and a stats tab covering the
 past six months.
 
 Built with Next.js (App Router), Neon Postgres, Drizzle ORM, and Auth.js
@@ -59,7 +59,7 @@ npm run dev
 - The pace strip under the header compares spend (% of budget, split by
   pillar) against how far through the month you are.
 - Stats cover the trailing 6 months: averages skip empty months, and the
-  savings total sums the Short-term Savings pillar.
+  savings total sums the Savings pillar.
 
 ## Commands
 

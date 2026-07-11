@@ -11,8 +11,8 @@ import { Pillar, type PillarEntry } from "@/components/Pillar";
 
 const PILLARS: { category: Category; title: string }[] = [
   { category: "needs", title: "Needs" },
-  { category: "fun", title: "Fun" },
-  { category: "savings", title: "Short-term savings" },
+  { category: "wants", title: "Wants" },
+  { category: "savings", title: "Savings" },
 ];
 
 export default async function BudgetPage() {
@@ -36,8 +36,8 @@ export default async function BudgetPage() {
   const budgetCents = effectiveBudget(budgetRows, month);
   const hasBudget = budgetRows.some((row) => row.month <= month);
 
-  const byCategory: Record<Category, number> = { needs: 0, fun: 0, savings: 0 };
-  const byPillar: Record<Category, PillarEntry[]> = { needs: [], fun: [], savings: [] };
+  const byCategory: Record<Category, number> = { needs: 0, wants: 0, savings: 0 };
+  const byPillar: Record<Category, PillarEntry[]> = { needs: [], wants: [], savings: [] };
   for (const entry of monthEntries) {
     byCategory[entry.category] += entry.amountCents;
     byPillar[entry.category].push({
@@ -47,7 +47,7 @@ export default async function BudgetPage() {
       day: entry.createdAt.getDate(),
     });
   }
-  const spentCents = byCategory.needs + byCategory.fun + byCategory.savings;
+  const spentCents = byCategory.needs + byCategory.wants + byCategory.savings;
 
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 

@@ -85,7 +85,7 @@ export default async function StatsPage() {
           <StatCard
             label="Saved · 6 mo"
             value={formatMoney(stats.totalSavedCents)}
-            sub="Short-term savings pillar"
+            sub="Savings pillar"
             tone="phosphor"
           />
           <StatCard

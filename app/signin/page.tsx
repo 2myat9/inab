@@ -12,7 +12,7 @@ export default async function SignInPage() {
           INAB<span aria-hidden className="ml-px inline-block h-4 w-2 bg-phosphor" />
         </p>
         <p className="mt-3 text-sm text-fog">
-          One monthly budget. Three pillars: needs, fun, short-term savings.
+          One monthly budget. Three pillars: needs, wants, savings.
         </p>
         <form
           action={async () => {

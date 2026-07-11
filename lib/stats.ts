@@ -1,6 +1,6 @@
 import { effectiveBudget, type BudgetRow } from "./months";
 
-export type Category = "needs" | "fun" | "savings";
+export type Category = "needs" | "wants" | "savings";
 
 export type EntryRow = {
   month: string;
@@ -30,11 +30,11 @@ export function computeStats(
   budgets: BudgetRow[],
 ): Stats {
   const months: MonthStat[] = window.map((month) => {
-    const byCategory: Record<Category, number> = { needs: 0, fun: 0, savings: 0 };
+    const byCategory: Record<Category, number> = { needs: 0, wants: 0, savings: 0 };
     for (const entry of entries) {
       if (entry.month === month) byCategory[entry.category] += entry.amountCents;
     }
-    const totalCents = byCategory.needs + byCategory.fun + byCategory.savings;
+    const totalCents = byCategory.needs + byCategory.wants + byCategory.savings;
     return { month, totalCents, byCategory, budgetCents: effectiveBudget(budgets, month) };
   });
 
@@ -63,7 +63,7 @@ export function computeStats(
   const avgSplit = grandTotal
     ? {
         needs: months.reduce((s, m) => s + m.byCategory.needs, 0) / grandTotal,
-        fun: months.reduce((s, m) => s + m.byCategory.fun, 0) / grandTotal,
+        wants: months.reduce((s, m) => s + m.byCategory.wants, 0) / grandTotal,
         savings: totalSavedCents / grandTotal,
       }
     : null;

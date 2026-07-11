@@ -8,7 +8,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const categoryEnum = pgEnum("category", ["needs", "fun", "savings"]);
+export const categoryEnum = pgEnum("category", ["needs", "wants", "savings"]);
 
 export const budgets = pgTable(
   "budgets",
