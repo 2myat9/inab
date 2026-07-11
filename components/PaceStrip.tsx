@@ -58,7 +58,7 @@ export function PaceStrip({
             title={`Day ${dayOfMonth} of ${daysInMonth}`}
           />
         </div>
-        <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-widest">
+        <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
           <span className={over ? "text-alarm" : "text-fog"}>
             Spent {formatMoney(spentCents)} · {Math.round(spentPct * 100)}% of budget
           </span>

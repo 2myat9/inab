@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tally
 
-## Getting Started
+A single-user personal finance tracker. One monthly budget, three pillars —
+**Needs**, **Fun**, and **Short-term Savings** — and a stats tab covering the
+past six months.
 
-First, run the development server:
+Built with Next.js (App Router), Neon Postgres, Drizzle ORM, and Auth.js
+(Google sign-in). Designed to deploy on Vercel.
+
+## Setup
+
+### 1. Database (Neon)
+
+Create a Neon Postgres database — either through the
+[Vercel Marketplace](https://vercel.com/marketplace/neon) (recommended, it
+wires up `DATABASE_URL` automatically) or at [neon.tech](https://neon.tech).
+
+Push the schema:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+DATABASE_URL="postgres://..." npm run db:push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Google OAuth
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+In [Google Cloud Console](https://console.cloud.google.com) → APIs & Services
+→ Credentials, create an **OAuth client ID** (type: Web application) with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Authorized JavaScript origins: `http://localhost:3000` and your Vercel URL
+- Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
+  and `https://<your-app>.vercel.app/api/auth/callback/google`
 
-## Learn More
+### 3. Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+Copy `.env.example` to `.env.local` and fill it in. Note that **sign-in fails
+closed**: only emails listed in `ALLOWED_EMAILS` can sign in, and if it's
+empty nobody can.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx auth secret   # generates AUTH_SECRET
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+On Vercel, set the same variables in Project Settings → Environment Variables.
 
-## Deploy on Vercel
+### 4. Run
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## How it works
+
+- All money is stored as integer cents; months are keyed `YYYY-MM`.
+- The big number on the Budget tab is what's left: budget minus every entry
+  this month. Click the budget amount to edit it.
+- A new month starts empty and inherits the most recent budget until you edit
+  it. Months roll over based on the server's timezone (UTC on Vercel).
+- The pace strip under the header compares spend (% of budget, split by
+  pillar) against how far through the month you are.
+- Stats cover the trailing 6 months: averages skip empty months, and the
+  savings total sums the Short-term Savings pillar.
+
+## Commands
+
+| Command           | What it does                     |
+| ----------------- | -------------------------------- |
+| `npm run dev`     | Dev server                       |
+| `npm test`        | Unit tests (money, months, stats)|
+| `npm run build`   | Production build                 |
+| `npm run lint`    | ESLint                           |
+| `npm run db:push` | Push Drizzle schema to the DB    |
+| `npm run db:studio` | Browse the DB in Drizzle Studio|

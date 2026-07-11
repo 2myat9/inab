@@ -34,7 +34,7 @@ export function BudgetHeader({
   return (
     <section className="border-b border-line">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="flex items-baseline justify-between">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h1 className="font-mono text-xs uppercase tracking-[0.3em] text-fog">
             {monthTitle}
           </h1>

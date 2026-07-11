@@ -26,7 +26,7 @@ export async function TopNav() {
           >
             <button
               type="submit"
-              className="border border-line px-3 py-1 font-mono text-xs uppercase tracking-widest text-fog transition-colors hover:border-phosphor hover:text-phosphor"
+              className="whitespace-nowrap border border-line px-3 py-1 font-mono text-xs uppercase tracking-widest text-fog transition-colors hover:border-phosphor hover:text-phosphor"
             >
               Sign out
             </button>
