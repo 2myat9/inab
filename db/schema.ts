@@ -8,7 +8,10 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const categoryEnum = pgEnum("category", ["needs", "wants", "savings"]);
+// "savings" was retired from the app. The live Postgres enum still carries the
+// value (no rows use it); we deliberately don't `db:push` to drop it, since
+// removing an enum value means recreating the type on the live database.
+export const categoryEnum = pgEnum("category", ["needs", "wants"]);
 
 export const budgets = pgTable(
   "budgets",

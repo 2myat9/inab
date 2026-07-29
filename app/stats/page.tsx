@@ -70,7 +70,7 @@ export default async function StatsPage() {
       </section>
 
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3">
           <StatCard
             label="Avg monthly spend"
             value={stats.avgSpendCents === null ? "—" : formatMoney(stats.avgSpendCents)}
@@ -81,12 +81,6 @@ export default async function StatsPage() {
             value={stats.avgBudgetUsedPct === null ? "—" : `${stats.avgBudgetUsedPct}%`}
             sub={overAverage ? "Running over budget" : "Of each month's budget"}
             tone={overAverage ? "alarm" : "paper"}
-          />
-          <StatCard
-            label="Saved · 6 mo"
-            value={formatMoney(stats.totalSavedCents)}
-            sub="Savings pillar"
-            tone="phosphor"
           />
           <StatCard
             label="Peak month"

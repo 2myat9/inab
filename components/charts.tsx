@@ -4,22 +4,19 @@ import type { Category, MonthStat } from "@/lib/stats";
 const CATEGORY_FILLS: Record<Category, string> = {
   needs: "fill-pine",
   wants: "fill-moss",
-  savings: "fill-phosphor",
 };
 
 const CATEGORY_SWATCHES: Record<Category, string> = {
   needs: "bg-pine",
   wants: "bg-moss",
-  savings: "bg-phosphor",
 };
 
 const CATEGORY_LABELS: Record<Category, string> = {
   needs: "Needs",
   wants: "Wants",
-  savings: "Savings",
 };
 
-const ORDER: Category[] = ["needs", "wants", "savings"];
+const ORDER: Category[] = ["needs", "wants"];
 
 function shortMoney(cents: number): string {
   const dollars = cents / 100;

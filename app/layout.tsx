@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "INAB — monthly budget",
-  description: "Track the month across needs, wants, and savings.",
+  description: "Track the month across needs and wants.",
 };
 
 export default function RootLayout({

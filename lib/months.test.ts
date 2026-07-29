@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { effectiveBudget, lastNMonths, monthKey, monthLabel } from "./months";
+import {
+  daysInMonth,
+  effectiveBudget,
+  isMonthKey,
+  lastNMonths,
+  monthKey,
+  monthLabel,
+  shiftMonth,
+} from "./months";
 
 describe("monthKey", () => {
   test("formats a date as YYYY-MM", () => {
@@ -18,6 +26,49 @@ describe("monthLabel", () => {
 
   test("renders short labels when asked", () => {
     expect(monthLabel("2026-07", "short")).toBe("Jul");
+  });
+});
+
+describe("isMonthKey", () => {
+  test("accepts well-formed YYYY-MM keys", () => {
+    expect(isMonthKey("2026-07")).toBe(true);
+    expect(isMonthKey("2026-01")).toBe(true);
+    expect(isMonthKey("2026-12")).toBe(true);
+  });
+
+  test("rejects malformed or out-of-range values", () => {
+    expect(isMonthKey("2026-13")).toBe(false);
+    expect(isMonthKey("2026-00")).toBe(false);
+    expect(isMonthKey("2026-7")).toBe(false);
+    expect(isMonthKey("2026/07")).toBe(false);
+    expect(isMonthKey("")).toBe(false);
+    expect(isMonthKey("2026-07-01")).toBe(false);
+  });
+});
+
+describe("shiftMonth", () => {
+  test("moves forward and backward within a year", () => {
+    expect(shiftMonth("2026-07", 1)).toBe("2026-08");
+    expect(shiftMonth("2026-07", -1)).toBe("2026-06");
+    expect(shiftMonth("2026-07", 0)).toBe("2026-07");
+  });
+
+  test("crosses year boundaries", () => {
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(shiftMonth("2026-02", -4)).toBe("2025-10");
+  });
+});
+
+describe("daysInMonth", () => {
+  test("returns the number of days in the month", () => {
+    expect(daysInMonth("2026-07")).toBe(31);
+    expect(daysInMonth("2026-06")).toBe(30);
+    expect(daysInMonth("2026-02")).toBe(28);
+  });
+
+  test("accounts for leap years", () => {
+    expect(daysInMonth("2028-02")).toBe(29);
   });
 });
 

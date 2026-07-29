@@ -1,6 +1,6 @@
 import { effectiveBudget, type BudgetRow } from "./months";
 
-export type Category = "needs" | "wants" | "savings";
+export type Category = "needs" | "wants";
 
 export type EntryRow = {
   month: string;
@@ -19,7 +19,6 @@ export type Stats = {
   months: MonthStat[];
   avgSpendCents: number | null;
   avgBudgetUsedPct: number | null;
-  totalSavedCents: number;
   highestSpend: { month: string; totalCents: number } | null;
   avgSplit: Record<Category, number> | null;
 };
@@ -30,12 +29,12 @@ export function computeStats(
   budgets: BudgetRow[],
 ): Stats {
   const months: MonthStat[] = window.map((month) => {
-    const byCategory: Record<Category, number> = { needs: 0, wants: 0, savings: 0 };
+    const byCategory: Record<Category, number> = { needs: 0, wants: 0 };
     for (const entry of entries) {
       if (entry.month === month) byCategory[entry.category] += entry.amountCents;
     }
-    const totalCents = byCategory.needs + byCategory.wants + byCategory.savings;
-    return { month, totalCents, byCategory, budgetCents: effectiveBudget(budgets, month) };
+    const totalCents = byCategory.needs + byCategory.wants;
+    return { month, totalCents, budgetCents: effectiveBudget(budgets, month), byCategory };
   });
 
   const active = months.filter((m) => m.totalCents > 0);
@@ -52,8 +51,6 @@ export function computeStats(
       )
     : null;
 
-  const totalSavedCents = months.reduce((sum, m) => sum + m.byCategory.savings, 0);
-
   const highest = active.reduce<MonthStat | null>(
     (best, m) => (!best || m.totalCents > best.totalCents ? m : best),
     null,
@@ -64,7 +61,6 @@ export function computeStats(
     ? {
         needs: months.reduce((s, m) => s + m.byCategory.needs, 0) / grandTotal,
         wants: months.reduce((s, m) => s + m.byCategory.wants, 0) / grandTotal,
-        savings: totalSavedCents / grandTotal,
       }
     : null;
 
@@ -72,7 +68,6 @@ export function computeStats(
     months,
     avgSpendCents,
     avgBudgetUsedPct,
-    totalSavedCents,
     highestSpend: highest ? { month: highest.month, totalCents: highest.totalCents } : null,
     avgSplit,
   };

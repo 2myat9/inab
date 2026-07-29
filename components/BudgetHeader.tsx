@@ -3,17 +3,27 @@
 import { useActionState, useState } from "react";
 import { setBudget, type ActionResult } from "@/app/actions";
 import { formatMoney } from "@/lib/money";
+import { MonthNav } from "@/components/MonthNav";
+import type { Category } from "@/lib/stats";
 
 type Props = {
-  monthTitle: string;
-  dayLine: string;
+  month: string;
+  label: string;
+  prevMonth: string;
+  nextMonth: string | null;
+  category?: Category;
+  dayLine?: string;
   remainingCents: number;
   budgetCents: number;
   hasBudget: boolean;
 };
 
 export function BudgetHeader({
-  monthTitle,
+  month,
+  label,
+  prevMonth,
+  nextMonth,
+  category,
   dayLine,
   remainingCents,
   budgetCents,
@@ -34,11 +44,18 @@ export function BudgetHeader({
   return (
     <section className="border-b border-line">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h1 className="font-mono text-xs uppercase tracking-[0.3em] text-fog">
-            {monthTitle}
-          </h1>
-          <p className="font-mono text-xs uppercase tracking-widest text-fog">{dayLine}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <MonthNav
+            label={label}
+            prevMonth={prevMonth}
+            nextMonth={nextMonth}
+            category={category}
+          />
+          {dayLine ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-fog">
+              {dayLine}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
@@ -56,6 +73,7 @@ export function BudgetHeader({
 
             {editing ? (
               <form action={action} className="mt-1 flex items-center gap-2">
+                <input type="hidden" name="month" value={month} />
                 <label htmlFor="budget-amount" className="sr-only">
                   Monthly budget in dollars
                 </label>

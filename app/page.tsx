@@ -3,27 +3,52 @@ import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/db";
 import { budgets, entries } from "@/db/schema";
-import { effectiveBudget, monthKey, monthLabel } from "@/lib/months";
+import {
+  daysInMonth,
+  effectiveBudget,
+  isMonthKey,
+  monthKey,
+  monthLabel,
+  shiftMonth,
+} from "@/lib/months";
 import type { Category } from "@/lib/stats";
 import { BudgetHeader } from "@/components/BudgetHeader";
 import { PaceStrip } from "@/components/PaceStrip";
-import { Pillar, type PillarEntry } from "@/components/Pillar";
+import { AddEntryForm } from "@/components/AddEntryForm";
+import { CategoryFilter } from "@/components/CategoryFilter";
+import { Timeline, type DayGroup } from "@/components/Timeline";
 
-const PILLARS: { category: Category; title: string }[] = [
-  { category: "needs", title: "Needs" },
-  { category: "wants", title: "Wants" },
-  { category: "savings", title: "Savings" },
-];
+type SearchParams = { [key: string]: string | string[] | undefined };
 
-export default async function BudgetPage() {
+export default async function BudgetPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/signin");
   const userId = session.user.id;
 
   const now = new Date();
-  const month = monthKey(now);
-  const db = getDb();
+  const currentMonth = monthKey(now);
 
+  const params = await searchParams;
+
+  // The viewed month comes from the URL; clamp to a valid key no later than the
+  // current month (no navigating into the future).
+  const requested = params.m;
+  const month =
+    typeof requested === "string" && isMonthKey(requested) && requested <= currentMonth
+      ? requested
+      : currentMonth;
+  const isCurrentMonth = month === currentMonth;
+  const dim = daysInMonth(month);
+
+  // Optional category filter; anything unrecognized means "All".
+  const activeCategory: Category | null =
+    params.cat === "needs" || params.cat === "wants" ? params.cat : null;
+
+  const db = getDb();
   const [budgetRows, monthEntries] = await Promise.all([
     db.select().from(budgets).where(eq(budgets.userId, userId)),
     db
@@ -36,26 +61,52 @@ export default async function BudgetPage() {
   const budgetCents = effectiveBudget(budgetRows, month);
   const hasBudget = budgetRows.some((row) => row.month <= month);
 
-  const byCategory: Record<Category, number> = { needs: 0, wants: 0, savings: 0 };
-  const byPillar: Record<Category, PillarEntry[]> = { needs: [], wants: [], savings: [] };
+  // Totals span the whole month across both categories so the header stays
+  // honest about what's left; the filter narrows the timeline and the pace
+  // strip's readout.
+  const byCategory: Record<Category, number> = { needs: 0, wants: 0 };
+  const shortMonth = monthLabel(month, "short").toUpperCase();
+  const groupsByDay = new Map<number, DayGroup>();
   for (const entry of monthEntries) {
     byCategory[entry.category] += entry.amountCents;
-    byPillar[entry.category].push({
+    if (activeCategory && entry.category !== activeCategory) continue;
+    const day = entry.createdAt.getDate();
+    let group = groupsByDay.get(day);
+    if (!group) {
+      group = {
+        day,
+        label: `${shortMonth} ${String(day).padStart(2, "0")}`,
+        entries: [],
+      };
+      groupsByDay.set(day, group);
+    }
+    group.entries.push({
       id: entry.id,
+      category: entry.category,
       amountCents: entry.amountCents,
       note: entry.note,
-      day: entry.createdAt.getDate(),
     });
   }
-  const spentCents = byCategory.needs + byCategory.wants + byCategory.savings;
+  // monthEntries is newest-first, so the map is already ordered newest day first.
+  const groups = [...groupsByDay.values()];
+  const spentCents = byCategory.needs + byCategory.wants;
 
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const today = `${month}-${String(now.getDate()).padStart(2, "0")}`;
+  const minDate = `${month}-01`;
+  // On the live month you can't file an entry in the future; past months are
+  // open through their last day.
+  const maxDate = isCurrentMonth ? today : `${month}-${String(dim).padStart(2, "0")}`;
+  const defaultDate = isCurrentMonth ? today : minDate;
 
   return (
     <main className="flex-1">
       <BudgetHeader
-        monthTitle={monthLabel(month)}
-        dayLine={`Day ${now.getDate()} of ${daysInMonth}`}
+        month={month}
+        label={monthLabel(month)}
+        prevMonth={shiftMonth(month, -1)}
+        nextMonth={isCurrentMonth ? null : shiftMonth(month, 1)}
+        category={activeCategory ?? undefined}
+        dayLine={isCurrentMonth ? `Day ${now.getDate()} of ${dim}` : undefined}
         remainingCents={budgetCents - spentCents}
         budgetCents={budgetCents}
         hasBudget={hasBudget}
@@ -64,21 +115,32 @@ export default async function BudgetPage() {
         byCategory={byCategory}
         spentCents={spentCents}
         budgetCents={budgetCents}
-        dayOfMonth={now.getDate()}
-        daysInMonth={daysInMonth}
+        dayOfMonth={isCurrentMonth ? now.getDate() : dim}
+        daysInMonth={dim}
+        isCurrentMonth={isCurrentMonth}
+        activeCategory={activeCategory}
       />
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3">
-          {PILLARS.map(({ category, title }) => (
-            <Pillar
-              key={category}
-              category={category}
-              title={title}
-              subtotalCents={byCategory[category]}
-              entries={byPillar[category]}
-            />
-          ))}
+        <div className="mb-4">
+          <CategoryFilter month={month} active={activeCategory} />
         </div>
+        <div className="mb-4">
+          <AddEntryForm
+            month={month}
+            defaultCategory={activeCategory ?? "needs"}
+            defaultDate={defaultDate}
+            minDate={minDate}
+            maxDate={maxDate}
+          />
+        </div>
+        <Timeline
+          groups={groups}
+          emptyMessage={
+            activeCategory
+              ? `No ${activeCategory} entries this month.`
+              : "No entries this month."
+          }
+        />
       </div>
     </main>
   );

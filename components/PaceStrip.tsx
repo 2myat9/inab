@@ -7,12 +7,18 @@ type Props = {
   budgetCents: number;
   dayOfMonth: number;
   daysInMonth: number;
+  isCurrentMonth: boolean;
+  activeCategory?: Category | null;
 };
 
 const SEGMENT_COLORS: Record<Category, string> = {
   needs: "bg-pine",
   wants: "bg-moss",
-  savings: "bg-phosphor",
+};
+
+const SEGMENT_LABELS: Record<Category, string> = {
+  needs: "Needs",
+  wants: "Wants",
 };
 
 // Spend vs. time: category segments fill toward the budget line while a
@@ -24,13 +30,22 @@ export function PaceStrip({
   budgetCents,
   dayOfMonth,
   daysInMonth,
+  isCurrentMonth,
+  activeCategory = null,
 }: Props) {
   if (budgetCents <= 0) return null;
 
+  // The bar geometry always describes the whole month, so filtering doesn't
+  // move the budget line or the day marker under you.
   const scale = Math.max(spentCents, budgetCents);
   const monthPct = dayOfMonth / daysInMonth;
-  const spentPct = spentCents / budgetCents;
   const over = spentCents > budgetCents;
+
+  // The readout follows the filter: with one category selected it reports that
+  // category's spend against the month's budget.
+  const shownCents = activeCategory ? byCategory[activeCategory] : spentCents;
+  const shownPct = shownCents / budgetCents;
+  const shownOver = shownCents > budgetCents;
 
   return (
     <section aria-label="Spending pace" className="border-b border-line">
@@ -40,7 +55,9 @@ export function PaceStrip({
             {(Object.keys(SEGMENT_COLORS) as Category[]).map((category) => (
               <div
                 key={category}
-                className={SEGMENT_COLORS[category]}
+                className={`${SEGMENT_COLORS[category]} ${
+                  activeCategory && category !== activeCategory ? "opacity-30" : ""
+                }`}
                 style={{ width: `${(byCategory[category] / scale) * 100}%` }}
               />
             ))}
@@ -52,19 +69,24 @@ export function PaceStrip({
               title="Budget"
             />
           ) : null}
-          <div
-            className="absolute -top-1 h-8 w-0.5 bg-paper"
-            style={{ left: `${monthPct * (budgetCents / scale) * 100}%` }}
-            title={`Day ${dayOfMonth} of ${daysInMonth}`}
-          />
+          {isCurrentMonth ? (
+            <div
+              className="absolute -top-1 h-8 w-0.5 bg-paper"
+              style={{ left: `${monthPct * (budgetCents / scale) * 100}%` }}
+              title={`Day ${dayOfMonth} of ${daysInMonth}`}
+            />
+          ) : null}
         </div>
         <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
-          <span className={over ? "text-alarm" : "text-fog"}>
-            Spent {formatMoney(spentCents)} · {Math.round(spentPct * 100)}% of budget
+          <span className={shownOver ? "text-alarm" : "text-fog"}>
+            {activeCategory ? `${SEGMENT_LABELS[activeCategory]} spent` : "Spent"}{" "}
+            {formatMoney(shownCents)} · {Math.round(shownPct * 100)}% of budget
           </span>
-          <span className="text-fog">
-            Day {dayOfMonth}/{daysInMonth} · {Math.round(monthPct * 100)}% of month
-          </span>
+          {isCurrentMonth ? (
+            <span className="text-fog">
+              Day {dayOfMonth}/{daysInMonth} · {Math.round(monthPct * 100)}% of month
+            </span>
+          ) : null}
         </div>
       </div>
     </section>
