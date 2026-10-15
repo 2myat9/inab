@@ -91,7 +91,7 @@ export default async function BudgetPage({
   const groups = [...groupsByDay.values()];
   const spentCents = byCategory.needs + byCategory.wants;
 
-  const today = `${month}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = `${currentMonth}-${String(now.getDate()).padStart(2, "0")}`;
   const minDate = `${month}-01`;
   // On the live month you can't file an entry in the future; past months are
   // open through their last day.
@@ -120,17 +120,20 @@ export default async function BudgetPage({
         isCurrentMonth={isCurrentMonth}
         activeCategory={activeCategory}
       />
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      {/* Extra bottom room on mobile so the pinned add button never hides the last entry. */}
+      <div className="mx-auto max-w-5xl px-4 pt-8 pb-32 md:pb-8">
         <div className="mb-4">
           <CategoryFilter month={month} active={activeCategory} />
         </div>
-        <div className="mb-4">
+        <div className="mb-4 md:mb-5">
           <AddEntryForm
             month={month}
-            defaultCategory={activeCategory ?? "needs"}
+            filterCategory={activeCategory}
             defaultDate={defaultDate}
             minDate={minDate}
             maxDate={maxDate}
+            today={today}
+            remainingCents={hasBudget ? budgetCents - spentCents : null}
           />
         </div>
         <Timeline
