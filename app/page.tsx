@@ -14,7 +14,7 @@ import {
 import type { Category } from "@/lib/stats";
 import { BudgetHeader } from "@/components/BudgetHeader";
 import { PaceStrip } from "@/components/PaceStrip";
-import { AddEntryForm } from "@/components/AddEntryForm";
+import { EntryForm } from "@/components/EntryForm";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { Timeline, type DayGroup } from "@/components/Timeline";
 
@@ -85,6 +85,7 @@ export default async function BudgetPage({
       category: entry.category,
       amountCents: entry.amountCents,
       note: entry.note,
+      date: `${month}-${String(day).padStart(2, "0")}`,
     });
   }
   // monthEntries is newest-first, so the map is already ordered newest day first.
@@ -125,25 +126,25 @@ export default async function BudgetPage({
         <div className="mb-4">
           <CategoryFilter month={month} active={activeCategory} />
         </div>
-        <div className="mb-4 md:mb-5">
-          <AddEntryForm
-            month={month}
-            filterCategory={activeCategory}
-            defaultDate={defaultDate}
-            minDate={minDate}
-            maxDate={maxDate}
-            today={today}
-            remainingCents={hasBudget ? budgetCents - spentCents : null}
+        {/* The timeline sits inside the form so its rows can open it to edit. */}
+        <EntryForm
+          month={month}
+          filterCategory={activeCategory}
+          defaultDate={defaultDate}
+          minDate={minDate}
+          maxDate={maxDate}
+          today={today}
+          remainingCents={hasBudget ? budgetCents - spentCents : null}
+        >
+          <Timeline
+            groups={groups}
+            emptyMessage={
+              activeCategory
+                ? `No ${activeCategory} entries this month.`
+                : "No entries this month."
+            }
           />
-        </div>
-        <Timeline
-          groups={groups}
-          emptyMessage={
-            activeCategory
-              ? `No ${activeCategory} entries this month.`
-              : "No entries this month."
-          }
-        />
+        </EntryForm>
       </div>
     </main>
   );

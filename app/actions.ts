@@ -52,6 +52,40 @@ function entryTimestamp(month: string, raw: unknown, now: Date): Date {
   return new Date(year, m - 1, 1, 12, 0, 0);
 }
 
+function dateKey(date: Date): string {
+  return `${monthKey(date)}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+type EntryFields = {
+  category: z.infer<typeof categorySchema>;
+  amountCents: number;
+  note: string | null;
+};
+
+function parseEntryFields(
+  formData: FormData,
+): { ok: true; data: EntryFields } | { ok: false; error: string } {
+  const category = categorySchema.safeParse(formData.get("category"));
+  if (!category.success) {
+    return { ok: false, error: "Unknown category" };
+  }
+
+  const amountCents = parseMoney(String(formData.get("amount") ?? ""));
+  if (amountCents === null || amountCents === 0) {
+    return { ok: false, error: "Enter a valid amount" };
+  }
+
+  const note = noteSchema.safeParse(formData.get("note") ?? "");
+  if (!note.success) {
+    return { ok: false, error: "Note is too long" };
+  }
+
+  return {
+    ok: true,
+    data: { category: category.data, amountCents, note: note.data || null },
+  };
+}
+
 function revalidateTabs() {
   revalidatePath("/");
   revalidatePath("/stats");
@@ -92,36 +126,77 @@ export async function addEntry(
 ): Promise<ActionResult> {
   const userId = await requireUserId();
 
-  const category = categorySchema.safeParse(formData.get("category"));
-  if (!category.success) {
-    return { ok: false, error: "Unknown category" };
-  }
-
-  const amountCents = parseMoney(String(formData.get("amount") ?? ""));
-  if (amountCents === null || amountCents === 0) {
-    return { ok: false, error: "Enter a valid amount" };
-  }
-
-  const note = noteSchema.safeParse(formData.get("note") ?? "");
-  if (!note.success) {
-    return { ok: false, error: "Note is too long" };
-  }
+  const fields = parseEntryFields(formData);
+  if (!fields.ok) return { ok: false, error: fields.error };
 
   const now = new Date();
   const month = resolveMonth(formData.get("month"), monthKey(now));
   const createdAt = entryTimestamp(month, formData.get("date"), now);
 
   try {
-    await getDb().insert(entries).values({
-      userId,
-      month,
-      category: category.data,
-      amountCents,
-      note: note.data || null,
-      createdAt,
-    });
+    await getDb()
+      .insert(entries)
+      .values({ userId, month, ...fields.data, createdAt });
   } catch {
     return { ok: false, error: "Could not add entry" };
+  }
+
+  revalidateTabs();
+  return { ok: true };
+}
+
+export async function updateEntry(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const id = z.coerce.number().int().safeParse(formData.get("id"));
+  if (!id.success) {
+    return { ok: false, error: "Unknown entry" };
+  }
+
+  const fields = parseEntryFields(formData);
+  if (!fields.ok) return { ok: false, error: fields.error };
+
+  const db = getDb();
+  const where = and(eq(entries.id, id.data), eq(entries.userId, userId));
+
+  try {
+    const [existing] = await db
+      .select({ month: entries.month, createdAt: entries.createdAt })
+      .from(entries)
+      .where(where);
+    if (!existing) {
+      return { ok: false, error: "Entry not found" };
+    }
+
+    // An entry stays in its month; the date only moves it between days. Leave
+    // the timestamp alone when the day is unchanged so it keeps its place.
+    const now = new Date();
+    const date = formData.get("date");
+    const day = typeof date === "string" ? Number(date.slice(8)) : 0;
+    if (
+      typeof date !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !date.startsWith(`${existing.month}-`) ||
+      day < 1 ||
+      day > daysInMonth(existing.month) ||
+      date > dateKey(now)
+    ) {
+      return { ok: false, error: "Pick a date in this month" };
+    }
+    const createdAt =
+      date === dateKey(existing.createdAt)
+        ? existing.createdAt
+        : entryTimestamp(existing.month, date, now);
+
+    await db
+      .update(entries)
+      .set({ ...fields.data, createdAt })
+      .where(where);
+  } catch {
+    return { ok: false, error: "Could not save entry" };
   }
 
   revalidateTabs();
