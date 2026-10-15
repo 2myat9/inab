@@ -1,15 +1,36 @@
 "use client";
 
 import {
+  createContext,
+  use,
   useEffect,
   useEffectEvent,
   useRef,
   useState,
   useTransition,
+  type ReactNode,
 } from "react";
-import { addEntry } from "@/app/actions";
+import { addEntry, updateEntry } from "@/app/actions";
 import { formatMoney } from "@/lib/money";
 import type { Category } from "@/lib/stats";
+
+export type EditableEntry = {
+  id: number;
+  category: Category;
+  amountCents: number;
+  note: string | null;
+  // YYYY-MM-DD, the day the timeline files the entry under.
+  date: string;
+};
+
+// Lets timeline rows (rendered as children of the form) open it on an entry.
+const EditEntryContext = createContext<((entry: EditableEntry) => void) | null>(null);
+
+export function useEditEntry() {
+  const edit = use(EditEntryContext);
+  if (!edit) throw new Error("useEditEntry must be used inside <EntryForm>");
+  return edit;
+}
 
 const CATEGORIES: Category[] = ["needs", "wants"];
 
@@ -30,6 +51,7 @@ type Props = {
   today: string;
   // What's left of the month's budget before this entry; null without a budget.
   remainingCents: number | null;
+  children?: ReactNode;
 };
 
 function shiftDate(date: string, delta: number): string {
@@ -57,7 +79,7 @@ function amountSize(label: string, sizes: [number, number, number, number]): num
   return len <= 6 ? sizes[0] : len <= 8 ? sizes[1] : len <= 10 ? sizes[2] : sizes[3];
 }
 
-export function AddEntryForm({
+export function EntryForm({
   month,
   filterCategory,
   defaultDate,
@@ -65,8 +87,11 @@ export function AddEntryForm({
   maxDate,
   today,
   remainingCents,
+  children,
 }: Props) {
   const [open, setOpen] = useState(false);
+  // The entry being edited, or null when adding a new one.
+  const [editing, setEditing] = useState<EditableEntry | null>(null);
   const [digits, setDigits] = useState("");
   const [category, setCategory] = useState<Category>(filterCategory ?? "needs");
   const [date, setDate] = useState(defaultDate);
@@ -80,11 +105,22 @@ export function AddEntryForm({
   const cents = digits ? Number(digits) : 0;
 
   function openEntry() {
+    setEditing(null);
     setDigits("");
     setNote("");
     setError(null);
     setDate(defaultDate);
     if (filterCategory) setCategory(filterCategory);
+    setOpen(true);
+  }
+
+  function openEdit(entry: EditableEntry) {
+    setEditing(entry);
+    setDigits(String(entry.amountCents));
+    setNote(entry.note ?? "");
+    setError(null);
+    setDate(entry.date);
+    setCategory(entry.category);
     setOpen(true);
   }
 
@@ -117,14 +153,17 @@ export function AddEntryForm({
     formData.set("amount", (cents / 100).toFixed(2));
     formData.set("date", date);
     formData.set("note", note);
+    if (editing) formData.set("id", String(editing.id));
     startTransition(async () => {
-      const result = await addEntry(null, formData);
+      const result = editing
+        ? await updateEntry(null, formData)
+        : await addEntry(null, formData);
       if (result.ok) {
         setOpen(false);
         setDigits("");
         setNote("");
       } else {
-        setError(result.error ?? "Could not add entry");
+        setError(result.error ?? (editing ? "Could not save entry" : "Could not add entry"));
       }
     });
   }
@@ -182,6 +221,8 @@ export function AddEntryForm({
     if (!open) return;
     const mobile = window.matchMedia("(max-width: 47.999rem)").matches;
     if (!mobile) {
+      // Editing starts from a timeline row that may be well below the panel.
+      panelRef.current?.scrollIntoView({ block: "nearest" });
       panelRef.current?.focus({ preventScroll: true });
       return;
     }
@@ -194,7 +235,12 @@ export function AddEntryForm({
   }, [open]);
 
   const amountText = formatMoney(cents);
-  const left = remainingCents === null ? null : remainingCents - cents;
+  // An edited entry is already counted in remainingCents; swap its old amount
+  // for the new one.
+  const left =
+    remainingCents === null
+      ? null
+      : remainingCents + (editing?.amountCents ?? 0) - cents;
   const leftText =
     left === null
       ? null
@@ -215,6 +261,7 @@ export function AddEntryForm({
     over: left !== null && left < 0,
     pending,
     error,
+    editing: editing !== null,
     onStepDate: stepDate,
     onPickDate: (value: string) => {
       if (value >= minDate && value <= maxDate) setDate(value);
@@ -227,110 +274,115 @@ export function AddEntryForm({
     onClose: close,
   };
 
+  const title = editing ? "Edit entry" : "Add entry";
+
   return (
-    <>
-      {/* Desktop: inline trigger, expanding into a two-column panel. */}
-      {open ? (
-        <div
-          ref={panelRef}
-          tabIndex={-1}
-          role="group"
-          aria-label="Add entry"
-          className="hidden border border-phosphor outline-none md:grid md:grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]"
-        >
-          <div className="flex flex-col gap-6 border-r border-line p-7">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <DateStepper {...shared} className="h-10 border border-line" />
-              <CategoryToggle {...shared} className="h-10" />
-            </div>
-            <div className="flex min-h-40 flex-1 flex-col justify-center">
-              <AmountDisplay {...shared} sizes={[96, 84, 72, 60]} />
-            </div>
-            <NoteInput {...shared} className="h-12 w-full text-[15px]" />
-            <div className="flex gap-2.5">
-              <SubmitButton {...shared} className="h-14 flex-1" />
-              <button
-                type="button"
-                onClick={close}
-                className="h-14 border border-line px-5 font-mono text-xs uppercase tracking-widest text-fog transition-colors hover:border-phosphor hover:text-paper"
-              >
-                Cancel
-              </button>
-            </div>
-            <ErrorLine error={error} />
-            <p className="font-mono text-[11px] tracking-wide text-fog/70">
-              Type digits · ⌫ delete · ↵ add · esc cancel
-            </p>
-          </div>
-          <Keypad {...shared} className="auto-rows-[minmax(5rem,1fr)] text-[34px]" />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={openEntry}
-          className="hidden h-15 w-full items-center gap-3 border border-line px-6 text-left font-mono text-sm uppercase tracking-[0.2em] text-phosphor transition-colors hover:border-phosphor md:flex"
-        >
-          + Add entry
-          <span className="font-mono text-xs normal-case tracking-wide text-fog/70">
-            or press N
-          </span>
-        </button>
-      )}
-
-      {/* Mobile: thumb-reach button pinned to the bottom... */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-linear-to-t from-ink from-70% to-ink/0 px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:hidden">
-        <button
-          type="button"
-          onClick={openEntry}
-          className="h-15 w-full bg-phosphor font-mono text-[15px] font-medium uppercase tracking-[0.2em] text-black active:bg-moss"
-        >
-          + Add entry
-        </button>
-      </div>
-
-      {/* ...opening a full-screen sheet with its own keypad. */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add entry"
-        inert={!open}
-        className={`fixed inset-0 z-50 flex flex-col bg-ink transition-transform duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)] md:hidden ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="flex h-14 shrink-0 items-stretch border-b border-line">
-          <button
-            ref={sheetCloseRef}
-            type="button"
-            onClick={close}
-            aria-label="Close"
-            className="w-16 border-r border-line text-2xl text-fog"
+    <EditEntryContext value={openEdit}>
+      <div className="mb-4 md:mb-5">
+        {/* Desktop: inline trigger, expanding into a two-column panel. */}
+        {open ? (
+          <div
+            ref={panelRef}
+            tabIndex={-1}
+            role="group"
+            aria-label={title}
+            className="hidden border border-phosphor outline-none md:grid md:grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]"
           >
-            ×
+            <div className="flex flex-col gap-6 border-r border-line p-7">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <DateStepper {...shared} className="h-10 border border-line" />
+                <CategoryToggle {...shared} className="h-10" />
+              </div>
+              <div className="flex min-h-40 flex-1 flex-col justify-center">
+                <AmountDisplay {...shared} sizes={[96, 84, 72, 60]} />
+              </div>
+              <NoteInput {...shared} className="h-12 w-full text-[15px]" />
+              <div className="flex gap-2.5">
+                <SubmitButton {...shared} className="h-14 flex-1" />
+                <button
+                  type="button"
+                  onClick={close}
+                  className="h-14 border border-line px-5 font-mono text-xs uppercase tracking-widest text-fog transition-colors hover:border-phosphor hover:text-paper"
+                >
+                  Cancel
+                </button>
+              </div>
+              <ErrorLine error={error} />
+              <p className="font-mono text-[11px] tracking-wide text-fog/70">
+                Type digits · ⌫ delete · ↵ {editing ? "save" : "add"} · esc cancel
+              </p>
+            </div>
+            <Keypad {...shared} className="auto-rows-[minmax(5rem,1fr)] text-[34px]" />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={openEntry}
+            className="hidden h-15 w-full items-center gap-3 border border-line px-6 text-left font-mono text-sm uppercase tracking-[0.2em] text-phosphor transition-colors hover:border-phosphor md:flex"
+          >
+            + Add entry
+            <span className="font-mono text-xs normal-case tracking-wide text-fog/70">
+              or press N
+            </span>
           </button>
-          <DateStepper {...shared} className="flex-1" wide />
+        )}
+
+        {/* Mobile: thumb-reach button pinned to the bottom... */}
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-linear-to-t from-ink from-70% to-ink/0 px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:hidden">
+          <button
+            type="button"
+            onClick={openEntry}
+            className="h-15 w-full bg-phosphor font-mono text-[15px] font-medium uppercase tracking-[0.2em] text-black active:bg-moss"
+          >
+            + Add entry
+          </button>
         </div>
 
-        <div className="flex flex-auto flex-col items-center justify-center px-4 py-3">
-          <AmountDisplay {...shared} sizes={[76, 64, 52, 44]} centered />
-        </div>
+        {/* ...opening a full-screen sheet with its own keypad. */}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          inert={!open}
+          className={`fixed inset-0 z-50 flex flex-col bg-ink transition-transform duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)] md:hidden ${
+            open ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="flex h-14 shrink-0 items-stretch border-b border-line">
+            <button
+              ref={sheetCloseRef}
+              type="button"
+              onClick={close}
+              aria-label="Close"
+              className="w-16 border-r border-line text-2xl text-fog"
+            >
+              ×
+            </button>
+            <DateStepper {...shared} className="flex-1" wide />
+          </div>
 
-        <div className="flex gap-2 px-4 pb-3">
-          <CategoryToggle {...shared} className="h-11 shrink-0" />
-          <NoteInput {...shared} className="h-11 min-w-0 flex-1 text-sm" />
-        </div>
+          <div className="flex flex-auto flex-col items-center justify-center px-4 py-3">
+            <AmountDisplay {...shared} sizes={[76, 64, 52, 44]} centered />
+          </div>
 
-        <Keypad
-          {...shared}
-          className="min-h-45 flex-[0_1_18.5rem] auto-rows-[minmax(0,1fr)] border-t border-line text-3xl"
-        />
+          <div className="flex gap-2 px-4 pb-3">
+            <CategoryToggle {...shared} className="h-11 shrink-0" />
+            <NoteInput {...shared} className="h-11 min-w-0 flex-1 text-sm" />
+          </div>
 
-        <div className="border-t border-line px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-          <ErrorLine error={error} className="mb-2" />
-          <SubmitButton {...shared} className="h-15 w-full" />
+          <Keypad
+            {...shared}
+            className="min-h-45 flex-[0_1_18.5rem] auto-rows-[minmax(0,1fr)] border-t border-line text-3xl"
+          />
+
+          <div className="border-t border-line px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <ErrorLine error={error} className="mb-2" />
+            <SubmitButton {...shared} className="h-15 w-full" />
+          </div>
         </div>
       </div>
-    </>
+      {children}
+    </EditEntryContext>
   );
 }
 
@@ -346,6 +398,7 @@ type SharedProps = {
   leftText: string | null;
   over: boolean;
   pending: boolean;
+  editing: boolean;
   onStepDate: (delta: number) => void;
   onPickDate: (value: string) => void;
   onCategory: (category: Category) => void;
@@ -559,10 +612,12 @@ function SubmitButton({
   category,
   amountText,
   pending,
+  editing,
   onSubmit,
   className = "",
 }: SharedProps & { className?: string }) {
   const ready = cents > 0;
+  const verb = editing ? "Save" : "Add";
   return (
     <button
       type="button"
@@ -572,7 +627,13 @@ function SubmitButton({
         ready ? "bg-phosphor text-black disabled:opacity-60" : "bg-panel text-fog/40"
       } ${className}`}
     >
-      {pending ? "Adding…" : ready ? `Add ${amountText} → ${category}` : "Enter an amount"}
+      {pending
+        ? editing
+          ? "Saving…"
+          : "Adding…"
+        : ready
+          ? `${verb} ${amountText} → ${category}`
+          : "Enter an amount"}
     </button>
   );
 }
@@ -583,4 +644,29 @@ function ErrorLine({ error, className = "" }: { error: string | null; className?
       {error}
     </p>
   ) : null;
+}
+
+// A timeline row's edit action; opens the form on that entry.
+export function EditEntryButton({
+  entry,
+  className = "",
+  "aria-label": ariaLabel,
+  children,
+}: {
+  entry: EditableEntry;
+  className?: string;
+  "aria-label": string;
+  children: ReactNode;
+}) {
+  const edit = useEditEntry();
+  return (
+    <button
+      type="button"
+      onClick={() => edit(entry)}
+      aria-label={ariaLabel}
+      className={className}
+    >
+      {children}
+    </button>
+  );
 }

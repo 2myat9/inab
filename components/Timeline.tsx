@@ -1,13 +1,9 @@
 import { deleteEntry } from "@/app/actions";
+import { EditEntryButton, type EditableEntry } from "@/components/EntryForm";
 import { formatMoney } from "@/lib/money";
 import type { Category } from "@/lib/stats";
 
-export type TimelineEntry = {
-  id: number;
-  category: Category;
-  amountCents: number;
-  note: string | null;
-};
+export type TimelineEntry = EditableEntry;
 
 export type DayGroup = {
   day: number;
@@ -24,6 +20,29 @@ const LABEL: Record<Category, string> = {
   needs: "Needs",
   wants: "Wants",
 };
+
+// Row actions stay visible on touch screens, which have no hover to reveal
+// them; pointer devices show them on row hover or keyboard focus.
+const ROW_ACTION =
+  "flex h-8 w-8 items-center justify-center text-fog transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0";
+
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    >
+      <path d="M11 2.5 13.5 5 5.5 13H3v-2.5z" />
+      <path d="m9.5 4 2.5 2.5" />
+    </svg>
+  );
+}
 
 export function Timeline({
   groups,
@@ -51,7 +70,7 @@ export function Timeline({
             {group.entries.map((entry) => (
               <li
                 key={entry.id}
-                className="group flex items-center gap-3 border-b border-line px-4 py-2.5"
+                className="group flex items-center gap-3 border-b border-line py-1.5 pr-2 pl-4"
               >
                 <span
                   aria-hidden
@@ -66,16 +85,25 @@ export function Timeline({
                 <span className="font-mono text-sm tabular-nums text-paper">
                   {formatMoney(entry.amountCents)}
                 </span>
-                <form action={deleteEntry}>
-                  <input type="hidden" name="id" value={entry.id} />
-                  <button
-                    type="submit"
-                    aria-label={`Delete ${formatMoney(entry.amountCents)} entry`}
-                    className="px-1 font-mono text-sm text-fog opacity-0 transition-opacity hover:text-alarm focus-visible:opacity-100 group-hover:opacity-100"
+                <div className="-ml-1 flex items-center">
+                  <EditEntryButton
+                    entry={entry}
+                    aria-label={`Edit ${formatMoney(entry.amountCents)} entry`}
+                    className={`${ROW_ACTION} hover:text-phosphor`}
                   >
-                    ×
-                  </button>
-                </form>
+                    <PencilIcon />
+                  </EditEntryButton>
+                  <form action={deleteEntry}>
+                    <input type="hidden" name="id" value={entry.id} />
+                    <button
+                      type="submit"
+                      aria-label={`Delete ${formatMoney(entry.amountCents)} entry`}
+                      className={`${ROW_ACTION} font-mono text-sm hover:text-alarm`}
+                    >
+                      ×
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
