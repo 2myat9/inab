@@ -367,7 +367,7 @@ export function EntryForm({
 
           <div className="flex gap-2 px-4 pb-3">
             <CategoryToggle {...shared} className="h-11 shrink-0" />
-            <NoteInput {...shared} className="h-11 min-w-0 flex-1 text-sm" />
+            <NoteInput {...shared} className="h-11 min-w-0 flex-1 text-base" />
           </div>
 
           <Keypad
